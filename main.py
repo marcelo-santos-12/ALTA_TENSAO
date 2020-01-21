@@ -1,12 +1,8 @@
 import numpy as np
-import cv2
-import os
+import matplotlib.pyplot as plt
 from tqdm import tqdm
-#import matplotlib.pyplot as plt
-from scipy import interp
-from lbp_module.texture import base_lbp, improved_lbp, hamming_lbp, completed_lbp, extended_lbp
-import sklearn
-from sklearn.svm import SVC
+import pandas as pd
+from sklearn.svm import SVR
 from sklearn.model_selection import cross_val_score
 from sklearn.preprocessing import normalize
 from sklearn.neural_network import MLPClassifier
@@ -15,44 +11,45 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import roc_curve, auc, recall_score, accuracy_score, precision_score, f1_score
 from sklearn.model_selection import StratifiedKFold, GridSearchCV
-from pygame import mixer
+from utils import *
 
 
 def main():
+    ##################### Aquisicao e Tratamento de dados ########################
 
-    x_data = []
-    y_data = []
+    table_csv = pd.read_csv('variaveis_jan_2020_pa.csv')
 
-    print('Computando recursos...')
-    for index_binary, _class in enumerate(os.listdir(DATASET)):
-        print('Subtipo {}...'.format(_class))
-        path_class = os.path.join(DATASET, _class) # Malign and Benign
+    x_data, y_data = format_table(table_csv)
 
-        for _subclass in os.listdir(path_class):
-            path_img_subclass = os.path.join(path_class, _subclass)
+    ##################### Treinamento do Modelo ########################
+    # Metricas para Regressao:
+    # MSE: Erro medio quadratico
+    # MAE: Erro medio absoluto
 
-            print('Classe {}: {}'.format(index_binary, _subclass))
-            
-            for name_img in tqdm(os.listdir(path_img_subclass)):
-                path_name_img = os.path.join(path_img_subclass, name_img)
-                img = cv2.imread(path_name_img, cv2.IMREAD_GRAYSCALE)
-                
-                if img.shape != (460, 700):
-                    img = cv2.resize(img, (460, 700))
-                
-                feature = ALGORITHM[VARIANT](img, P=P, R=R, block=(1, 1), method=METHOD)
+    # Usando Cross VAlidation com K igual ao numero de amostras
+    n_cv = x_data.shape[0]
 
-                x_data.append(list(feature))
-                y_data.append(index_binary)
+    clf = SVR()
+    clf = KNeighborsClassifier()
+    clf = RandomForestClassifier()
+    mae = []
 
-    x_data = np.asarray(x_data)#normalize(np.asarray(x_data), norm='l1') # #
-    y_data = np.asarray(y_data)
+    kfolds = k_fold(n_cv)
 
-    print('Tamanho do vetor de recursos: ', x_data[0].shape)
+    for i, (train, test) in enumerate(kfolds):
+
+        y_test = clf.fit(x_data[train], y_data[train]).predict(x_data[test].reshape(1, -1))
+        y_true = y_data[test]
+        
+        i_mae = MAE(y_true, y_test[0])
+        
+        mae.append(i_mae)
     
-    n_cv = 5
+    print(np.mean(np.array(mae)))
+    print(np.std(np.array(mae)))
+    quit()
 
-    svm = SVC(probability=True)
+    svm = SVR()
     mlp = MLPClassifier()
     dt = DecisionTreeClassifier()
     rf = RandomForestClassifier()
@@ -90,15 +87,12 @@ def main():
                 ['Decision Trees', dt, dt_parameters], ['Random Forest', rf, rf_parameters], \
                 ['K-Nearest Neighbor', knn, knn_parameters]]
     
-    classifiers = [['MLP', mlp, mlp_parameters], ['Decision Trees', dt, dt_parameters], ['Random Forest', rf, rf_parameters], \
-                ['K-Nearest Neighbor', knn, knn_parameters]]
+    classifiers = [['MLP', mlp, mlp_parameters]] #, ['Decision Trees', dt, dt_parameters], ['Random Forest', rf, rf_parameters], \
+                # ['K-Nearest Neighbor', knn, knn_parameters]]
     
     # METRICAS A SEREM ANALISADAS
-    recall = []
-    precision = []
-    f1score = []
-    accuracy = []
-
+    mae = []
+    mse = []
     for _id, clf, parameters in classifiers:
         np.random.seed(10)
         cv = StratifiedKFold(n_splits=n_cv)
@@ -106,10 +100,7 @@ def main():
         print('Classificando com {}...'.format(_id))
         
         # CROSS-VALIDATION
-        aucs, tprs, results = [], [], []
-        mean_fpr = np.linspace(0, 1, 100)
-        
-        clf_grid_search = GridSearchCV(clf, param_grid=parameters, scoring='accuracy', cv=5)
+        clf_grid_search = GridSearchCV(clf, param_grid=parameters, scoring='accuracy', cv=n_cv)
 
         print('Iniciando GridSearch...')
         results_grid_search = clf_grid_search.fit(X=x_data, y=y_data)
@@ -127,66 +118,16 @@ def main():
             
             probas_ = best_clf.fit(x_data[train], y_data[train]).predict_proba(x_data[test])
             
-            # Compute ROC curve and area the curve
-            fpr, tpr, thresholds = roc_curve(y_data[test], probas_[:, 1])
-            tprs.append(interp(mean_fpr, fpr, tpr))
-            tprs[-1][0] = 0.0
-            roc_auc = auc(fpr, tpr)
-            aucs.append(roc_auc)
-            plt.plot(fpr, tpr, lw=1, alpha=0.5,
-                    label='ROC fold %d (AUC = %0.2f)' % (i, roc_auc))
-            
             # COMPUTANDO METRICAS PARA CADA FOLD
-            i_recall = recall_score(y_data[test], np.round(probas_[:, 1]))
-            i_precision = precision_score(y_data[test], np.round(probas_[:, 1]))
-            i_f1score = f1_score(y_data[test], np.round(probas_[:, 1]))
-            i_accuracy = accuracy_score(y_data[test], np.round(probas_[:, 1]))
+            i_mse = recall_score(y_data[test], np.round(probas_[:, 1]))
+            i_mae = precision_score(y_data[test], np.round(probas_[:, 1]))
             
-            recall.append(i_recall)
-            precision.append(i_precision)
-            f1score.append(i_f1score)
-            accuracy.append(i_accuracy)
+            mse.append(i_mse)
+            mae.append(i_mae)
         
-        #PLOTANDO LINHA DIAGONAL --> y = x
-        plt.plot([0, 1], [0, 1], linestyle='--', lw=2, color='r', \
-                label='Chance', alpha=.8)
-
-        # PLOTANDO MEDIA DA CURVA ROC DOS FOLDS
-        mean_tpr = np.mean(tprs, axis=0)
-        mean_tpr[-1] = 1.0
-        mean_auc = auc(mean_fpr, mean_tpr)
-        std_auc = np.std(aucs)
-        plt.plot(mean_fpr, mean_tpr, color='b', \
-                label=r'Mean ROC (AUC = %0.2f $\pm$ %0.2f)' % (mean_auc, std_auc), \
-                lw=2, alpha=.8)
-
-        # PLOTANDO NUVEM DO DESVIO PADRÃO
-        std_tpr = np.std(tprs, axis=0)
-        tprs_upper = np.minimum(mean_tpr + std_tpr, 1)
-        tprs_lower = np.maximum(mean_tpr - std_tpr, 0)
-        plt.fill_between(mean_fpr, tprs_lower, tprs_upper, color='grey', alpha=.2,
-                label=r'$\pm$ 1 std. dev.')
-
-        # PLOTANDO INFORMACOES BASICA DO GRAFICO
-        plt.xlim([-0.05, 1.05])
-        plt.ylim([-0.05, 1.05])
-        plt.xlabel('False Positive Rate')
-        plt.ylabel('True Positive Rate')
-        plt.title('ROC Curve - {} - {}/{} - P: {}, R:{}'.format(_id, METHOD.upper(), VARIANTS[VARIANT], P, R))
-        plt.legend(loc="lower right")
-        
-        if not os.path.exists(VARIANT):
-            os.makedirs(VARIANT)
-
-        plt.savefig('{}/{}_{}_{}_{}_{}.png'.format(VARIANT, METHOD.upper(), VARIANTS[VARIANT], _id.replace(' ', ''), P, R))
-        print('{}_{}_{}_{}_{}.png'.format(METHOD.upper(), VARIANTS[VARIANT], _id.replace(' ', ''), P, R))
-        
-        #plt.show()
-        plt.close()
-
         # PRINTANDO RESULTADOS GERAIS DO MODELO
-        results = np.asarray([accuracy, recall, precision, f1score])
-        id_results = ['accuracy', 'precision', 'recall', 'f1score']
+        results = np.asarray([mse, mae])
+        id_results = ['MSE', 'MAE']
         
         print('Resultados do Classificador: {}'.format(_id))
         for i, res in enumerate(results):
