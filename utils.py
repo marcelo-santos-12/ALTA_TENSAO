@@ -14,12 +14,18 @@ def k_fold(cv):
         kfold_test.append(i)
     return zip(kfold_train, kfold_test)
 
-def format_table(table_csv):
+def format_table(table_csv, remove=False):
     # Removendo colunas desnecessarias e organizando dados no formato entrada e saida
-    x_data = table_csv[['Rede Rodoviária', 'Rede Rodoviária Clandestina', 'População',
-                       'Renda domiciliar per capita', 'Taxa de desemprego', 'Homicídios',
-                       'PIB', 'Exportação', 'Analfabetos']]
-    y_data = table_csv['Área Devastada']
+    table_csv = table_csv.drop(columns=['ano'], axis=0)
+    y_data = table_csv['area_devastada']
+
+    #if remove:
+    #    table_csv = table_csv.drop(columns=['taxa_desemprego', 'analfabetos', 'população'], axis=0)
+
+
+    x_data = table_csv.drop(columns=['area_devastada'], axis=0)
+    
+    x_data = x_data[['exportacao', 'homicidios', 'renda_domiciliar_per_capita', 'PIB']]
 
     # Formatando os dados para o formato numerico
     def replace_virg(data):
