@@ -1,5 +1,7 @@
 import matplotlib.pyplot as plt
 import pandas as pd
+import seaborn as sns
+import numpy as np
 
 columns_format = {
     'rede_rodoviaria': ['Rede Roviária', 'RR'],
@@ -19,10 +21,8 @@ def main():
     
     df = pd.read_csv('variaveis_jan_2020_pa.csv')
     df = df.drop(columns=['ano'])
-    print(df.columns)
-    print(columns_format.keys())
-
-    quit()
+    
+    path_out = 'resultados'
 
     cols = []    
     for _, col in  columns_format.values():
@@ -31,24 +31,14 @@ def main():
     df.columns = cols
     corr = df.corr()
     
-    
-    '''
-    plt.matshow(corr, cmap='Spectral', interpolation='none')  
-    plt.colorbar()
-    plt.xticks(range(len(corr)), cols)
-    plt.yticks(range(len(corr)), cols)
-    plt.show()
-    '''
-    import seaborn as sns
-    import numpy as np
-
     f, ax = plt.subplots(figsize=(9, 6))
     
     mask = np.zeros_like(corr, dtype=np.bool)
     mask[np.triu_indices_from(mask, 1)] = True
     sns.heatmap(corr, mask=mask, cmap='RdBu', annot=True, linewidths=.5, ax=ax)
-    plt.savefig("correl.png")  
+    plt.savefig(path_out + '/' + "correl.png")  
     plt.show()
+
 
 if __name__ == '__main__':
 
