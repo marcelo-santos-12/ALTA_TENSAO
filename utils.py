@@ -41,7 +41,6 @@ def format_table(table_csv, remove=False):
 
     return np.asarray(x_data), np.asarray(y_data)
 
-
 def format_table_acc(table_csv):
     # Removendo colunas desnecessarias e organizando dados no formato entrada e saida
     table_csv = table_csv.drop(columns=['ano'], axis=0)

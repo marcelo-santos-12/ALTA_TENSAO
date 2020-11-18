@@ -10,26 +10,27 @@ import os
 def main():
     ##################### Aquisition and Data Configuring ########################
 
-    table_csv = pd.read_csv('variaveis_jan_2020_pa.csv')
+    var = 'jan'
+    table_csv = pd.read_csv('dados/variaveis_' + var + '_2020_pa.csv')
     
     x_data, y_data = format_table_acc(table_csv)
 
     features = {
-    'rede_rodoviaria': 'RR',
-    'rede_rodoviaria_clandestina': 'RDC',
+    'rede_rodoviaria': 'RN',
+    'rede_rodoviaria_clandestina': 'CRN',
     'população': 'POP',
-    'renda_domiciliar_per_capita': 'RDPC',
-    'taxa_desemprego': 'TD',
+    'renda_domiciliar_per_capita': 'HIPC',
+    'taxa_desemprego': 'UR',
     'homicidios': 'HOM',
-    'PIB': 'PIB',
+    'PIB': 'GDP',
     'exportacao': 'EXP',
-    'analfabetos': 'ANA'
+    'analfabetos': 'ILL'
     }
 
     ##################### Model Training ########################
     # Metrics
     # MAE: Mean Absolute Error
-    path_results = 'resultados'
+    path_results = 'resultados_' + var
     if not os.path.exists(path_results):
         os.makedirs(path_results)
 
