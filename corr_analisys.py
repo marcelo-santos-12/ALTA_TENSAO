@@ -2,33 +2,45 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 import numpy as np
+import os
 
 columns_format = {
-    'rede_rodoviaria': ['Rede Roviária', 'RR'],
-    'rede_rodoviaria_clandestina': ['Rede Rodoviária Clandestina', 'RDC'],
-    'area_devastada': ['Área Devastada', 'AD'],
-    'população': ['População', 'POP'],
-    'renda_domiciliar_per_capita': ['Renda Domiciliar Per Capita', 'RDPC'],
-    'taxa_desemprego': ['Taxa de Desemprego', 'TD'],
-    'homicidios': ['Homicídios', 'HOM'],
-    'PIB': ['PIB', 'PIB'],
-    'exportacao': ['Exportação', 'EXP'],
-    'analfabetos': ['Analfabetos', 'ANA']
+    'rede_rodoviaria': 'RN',
+    'rede_rodoviaria_clandestina': 'CRN',
+    'area_devastada': 'DA',
+    'população': 'POP',
+    'renda_domiciliar_per_capita': 'HIPC',
+    'taxa_desemprego': 'UR',
+    'homicidios': 'HOM',
+    'PIB': 'GDP',
+    'exportacao': 'EXP',
+    'analfabetos': 'ILL'
 }
-
+ 
 
 def main():
-    
-    df = pd.read_csv('variaveis_jan_2020_pa.csv')
+    var = 'jan'
+    df = pd.read_csv('dados/variaveis_' + var + '_2020_pa.csv')
     df = df.drop(columns=['ano'])
-    
-    path_out = 'resultados'
+    ACC = True
+    path_out = 'resultados_' + var
+    if not os.path.exists(path_out):
+        os.makedirs(path_out)
 
-    cols = []    
-    for _, col in  columns_format.values():
+    cols = []
+    for col in  columns_format.values():
         cols.append(col)
 
     df.columns = cols
+
+    if ACC:
+        x_0 = 267393.0285
+        val_acc = []
+        for i, val in enumerate(df['DA']):
+            val_acc.append(sum(df['DA'][:i+1]) + x_0)
+        
+        df['DA'] = val_acc
+
     corr = df.corr()
     
     f, ax = plt.subplots(figsize=(9, 6))
@@ -36,7 +48,7 @@ def main():
     mask = np.zeros_like(corr, dtype=np.bool)
     mask[np.triu_indices_from(mask, 1)] = True
     sns.heatmap(corr, mask=mask, cmap='RdBu', annot=True, linewidths=.5, ax=ax)
-    plt.savefig(path_out + '/' + "correl.png")  
+    plt.savefig(path_out + '/' + 'correl_' + var + '.png')  
     plt.show()
 
 
