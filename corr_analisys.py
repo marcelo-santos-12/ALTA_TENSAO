@@ -19,7 +19,7 @@ columns_format = {
  
 
 def main():
-    var = 'set'
+    var = 'jan' #jan=2018, set=2019
     df = pd.read_csv('dados/variaveis_' + var + '_2020_pa.csv')
     df = df.drop(columns=['ano'])
     ACC = True
@@ -34,7 +34,12 @@ def main():
     df.columns = cols
 
     if ACC:
-        x_0 = 267393.0285 - df['DA'][:-1].sum()
+        if var == 'jan':
+            x_0 = 267393.0285 - df['DA'].sum()
+
+        elif var == 'set':
+            x_0 = 267393.0285 - df['DA'][:-1].sum() # pegando valores ate 2018
+            
         val_acc = []
         for i, val in enumerate(df['DA']):
             val_acc.append(sum(df['DA'][:i+1]) + x_0)
